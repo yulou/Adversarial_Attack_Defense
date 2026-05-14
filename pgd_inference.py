@@ -12,22 +12,12 @@ import os
 import sys
 import argparse
 
-# Get the absolute path to PyTorch_CIFAR10 folder
-pytorch_cifar10_path = '/home/yulou/Homework/ARIN5303_AI_Cybersecurity/Project/PyTorch_CIFAR10/'
-
-# Add to Python path (BEFORE importing)
-#sys.path.append(pytorch_cifar10_path)
-
 from resnet import resnet18
 
 # Check device
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 print(f"Using device: {device}")
-
-#model = torch.hub.load("../pytorch-cifar-models", "cifar10_resnet20", source='local', pretrained=True)
-#weights = torch.load("cifar10_resnet20-4118986f.pt")
-#model.load_state_dict(weights)
 
 model = resnet18(pretrained=True)
 #model.load_state_dict(torch.load('best_finetuned_pgd_ep_0.03_alpha_0.01.pt'))
@@ -44,6 +34,7 @@ def get_validation_loader(dataset, valid_size=1024, batch_size=32):
     valid_sampler = torch.utils.data.SubsetRandomSampler(indices[:valid_size])
     return torch.utils.data.DataLoader(dataset, sampler=valid_sampler, batch_size=batch_size)
 
+# Transform the test dataset so that the inputs align with the training sample distribution
 cifar10_mean = (0.4914, 0.4822, 0.4465)
 cifar10_std = (0.2023, 0.1994, 0.2010)
 std = torch.Tensor(cifar10_std).view(1,3,1,1).to(device)
@@ -66,26 +57,8 @@ test_dataset = torchvision.datasets.CIFAR10(root="./data", train=False, download
 img, label = test_dataset[0]
 print("img shape {}, label {}, range min {}, max {}".format(img.shape, label, torch.min(img), torch.max(img)))
 
-# Define transforms
-#train_transform = transforms.Compose([
-#    transforms.Resize((32, 32)),
-#    transforms.ToTensor(),
-#    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-#])
-
-# Use ImageFolder for your directory structure
-#train_dataset = torchvision.datasets.ImageFolder(
-#    root='./data/train',  # Your train folder with class subdirectories
-#    transform=train_transform
-#)
-#print(f"train_dataset len {len(train_dataset)}")
-#test_dataset = torchvision.datasets.ImageFolder(
-#    root='./data/test',   # Your test folder with class subdirectories
-#    transform=train_transform
-#)
 print(f"train_dataset len {len(train_dataset)}")
 print(f"test_dataset len {len(test_dataset)}")
-
 batch_size=8
 # Create loaders
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
@@ -106,22 +79,6 @@ def test_natural(net, test_loader):
             correct += (predicted == labels).sum().item()
     return 100 * correct / total
 
-def train_natural(net, train_loader):
-    model.eval()
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for data in train_loader:
-            inputs, labels = data[0].to(device), data[1].to(device)
-            outputs = net(inputs)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-    return 100 * correct / total
-
-accuracy = train_natural(model, train_loader)
-print(f"Natural Train Accuracy: {accuracy:.2f}%")
-
 accuracy = test_natural(model, test_loader)
 print(f"Natural Test Accuracy: {accuracy:.2f}%")
 
@@ -133,11 +90,15 @@ def evaluate(model, test_loader, device, epsilon, alpha, num_iter):
         model: The model to evaluate
         test_loader: DataLoader for the test dataset
         device: Device to run evaluation on
-        return_details: If True, returns detailed metrics dictionary
+        epsilon: Attack perturbation rate
+        alpha: Step size for each iteration.
+        num_iter: Number of iterations for the attack.
     
     Returns:
-        If return_details=False: Tuple of (accuracy, loss)
-        If return_details=True: Dictionary with accuracy, loss, and other metrics
+        clean_acc: The prediction accuracy on clean inputs
+        clean_loss_avg: Average loss on clean inputs
+        adv_acc: The prediction accuracy on adversarial inputs
+        adv_loss_avg: Average loss on adversarial inputs
     """
     model.eval()
     criterion = nn.CrossEntropyLoss()
@@ -269,18 +230,14 @@ initial_accuracy = accuracy
 #with open('PGD_training_testing_summary.pkl', 'wb') as f:
 #    pickle.dump(summary, f)
 
-# Save the adversarially trained model
-#torch.save(model.state_dict(), f"trained_pgd_ep_{epsilon:.2f}_alpha_{alpha}.pt")
-#print("pgd trained model saved.")
-
-def plot_attack_classification1(model, data_loader, epsilon, alpha, num_iter, class_names):
+def plot_attack_classification(model, data_loader, epsilon, alpha, num_iter, class_names):
     """
-    Visualize the impact of FGSM attacks on classification.
+    Visualize the impact of PGD attacks on classification.
     
     Args:
         model: Trained model to attack.
         data_loader: DataLoader for test data.
-        epsilon: Magnitude of the FGSM perturbation.
+        epsilon: Magnitude of the PGD perturbation.
         class_names: List of class names corresponding to CIFAR-10 dataset.
     """
     data_iter = iter(data_loader)
@@ -343,5 +300,4 @@ class_names = [
     "dog", "frog", "horse", "ship", "truck"
 ]
 
-#plot_attack_classification(model, test_loader, epsilon=EP, class_names=class_names)
-plot_attack_classification1(model, test_loader, epsilon=EP, alpha=alpha, num_iter=num_iter, class_names=class_names)
+plot_attack_classification(model, test_loader, epsilon=EP, alpha=alpha, num_iter=num_iter, class_names=class_names)
