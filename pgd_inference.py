@@ -214,7 +214,7 @@ alpha = 2/255
 num_iter = 7
 
 clean_acc, clean_loss_avg, adv_acc, adv_loss_avg = evaluate(model, test_loader, device, EP, alpha, num_iter)
-
+print(f"Test Clean Acc: {clean_acc:.2f}%, Test Adv Acc: {adv_acc:.2f}%")
 initial_accuracy = accuracy
 
 #epsilon_arr = [4/255, 8/255, 16/255, 38/255]
