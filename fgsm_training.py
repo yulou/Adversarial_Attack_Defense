@@ -41,9 +41,6 @@ test_transform = transforms.Compose([
 train_dataset = torchvision.datasets.CIFAR10(root="./data", train=True, download=False, transform=train_transform)
 test_dataset = torchvision.datasets.CIFAR10(root="./data", train=False, download=False, transform=test_transform)
 
-img, label = test_dataset[0]
-print("img shape {}, label {}, range min {}, max {}".format(img.shape, label, torch.min(img), torch.max(img)))
-
 print(f"train_dataset len {len(train_dataset)}")
 print(f"test_dataset len {len(test_dataset)}")
 
@@ -147,7 +144,7 @@ def adversarial_training(
         test_history['adv_loss'].append(adv_loss_avg)
         test_history['clean_acc'].append(clean_acc)
         test_history['adv_acc'].append(adv_acc)
-        print(f"Epoch {epoch}: Test Clean Acc: {clean_acc:.2f}%, Test Adv Acc: {adv_acc:.2f}%")
+        print(f"Epoch {epoch+1}/{num_epochs}: Test Clean Acc: {clean_acc:.2f}%, Test Adv Acc: {adv_acc:.2f}%")
         
         # test accuracy is the average of clean and adversarial cases
         test_acc = (clean_acc + adv_acc) / 2
