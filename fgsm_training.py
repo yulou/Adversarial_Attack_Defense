@@ -15,6 +15,7 @@ import argparse
 from resnet import resnet18
 
 from adversarial_utils import fgsm_attack, evaluate_fgsm, test_natural
+from adversarial_utils import cifar10_mean, cifar10_std, std, mean
 
 # Check device
 use_cuda = torch.cuda.is_available()
@@ -25,10 +26,6 @@ model = resnet18(pretrained=True)
 
 model.to(device)
 
-cifar10_mean = (0.4914, 0.4822, 0.4465)
-cifar10_std = (0.2023, 0.1994, 0.2010)
-std = torch.Tensor(cifar10_std).view(1,3,1,1).to(device)
-mean = torch.Tensor(cifar10_mean).view(1,3,1,1).to(device)
 # Define data transformations
 train_transform = transforms.Compose([
     transforms.ToTensor(),
@@ -56,10 +53,10 @@ test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=8, shuffle=Fa
 
 model.eval()
 
-accuracy = test_natural(model, train_loader)
+accuracy = test_natural(model, train_loader, device)
 print(f"Natural Train Accuracy: {accuracy:.2f}%")
 
-accuracy = test_natural(model, test_loader)
+accuracy = test_natural(model, test_loader, device)
 print(f"Natural Test Accuracy: {accuracy:.2f}%")
 
 
