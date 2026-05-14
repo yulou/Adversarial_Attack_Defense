@@ -12,22 +12,12 @@ import os
 import sys
 import argparse
 
-# Get the absolute path to PyTorch_CIFAR10 folder
-pytorch_cifar10_path = '/home/yulou/Homework/ARIN5303_AI_Cybersecurity/Project/PyTorch_CIFAR10/'
-
-# Add to Python path (BEFORE importing)
-#sys.path.append(pytorch_cifar10_path)
-
 from resnet import resnet18
 
 # Check device
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 print(f"Using device: {device}")
-
-#model = torch.hub.load("../pytorch-cifar-models", "cifar10_resnet20", source='local', pretrained=True)
-#weights = torch.load("cifar10_resnet20-4118986f.pt")
-#model.load_state_dict(weights)
 
 model = resnet18(pretrained=True)
 
@@ -65,23 +55,6 @@ test_dataset = torchvision.datasets.CIFAR10(root="./data", train=False, download
 img, label = test_dataset[0]
 print("img shape {}, label {}, range min {}, max {}".format(img.shape, label, torch.min(img), torch.max(img)))
 
-# Define transforms
-#train_transform = transforms.Compose([
-#    transforms.Resize((32, 32)),
-#    transforms.ToTensor(),
-#    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-#])
-
-# Use ImageFolder for your directory structure
-#train_dataset = torchvision.datasets.ImageFolder(
-#    root='./data/train',  # Your train folder with class subdirectories
-#    transform=train_transform
-#)
-#print(f"train_dataset len {len(train_dataset)}")
-#test_dataset = torchvision.datasets.ImageFolder(
-#    root='./data/test',   # Your test folder with class subdirectories
-#    transform=train_transform
-#)
 print(f"train_dataset len {len(train_dataset)}")
 print(f"test_dataset len {len(test_dataset)}")
 
@@ -131,11 +104,13 @@ def evaluate(model, test_loader, device, epsilon):
         model: The model to evaluate
         test_loader: DataLoader for the test dataset
         device: Device to run evaluation on
-        return_details: If True, returns detailed metrics dictionary
+        epsilon: Attack perturbation rate
     
     Returns:
-        If return_details=False: Tuple of (accuracy, loss)
-        If return_details=True: Dictionary with accuracy, loss, and other metrics
+        clean_acc: The prediction accuracy on clean inputs
+        clean_loss_avg: Average loss on clean inputs
+        adv_acc: The prediction accuracy on adversarial inputs
+        adv_loss_avg: Average loss on adversarial inputs
     """
     model.eval()
     criterion = nn.CrossEntropyLoss()
@@ -221,12 +196,10 @@ def fgsm_attack(model, inputs, labels, epsilon):
 
     # Generate adversarial examples by adding perturbation
     adversarial_inputs = inputs_adv + epsilon * data_grad_sign
-
-    # Clip the adversarial examples to be within valid range [0, 1]
-    #adversarial_inputs = torch.clamp(adversarial_inputs, 0, 1)
     
     # Convert to pixel space and clamp
     adv_pixel = adversarial_inputs * std + mean
+    # Clip the adversarial examples to be within valid range [0, 1]
     adv_pixel = torch.clamp(adv_pixel, 0, 1)
     
     # Renormalize
@@ -273,7 +246,6 @@ def adversarial_training(
             inputs, labels = inputs.to(device), labels.to(device)
 
             # Generate adversarial examples using PGD
-            #adversarial_inputs = pgd_attack(model, inputs, labels, epsilon, alpha, num_iter)
             adversarial_inputs = fgsm_attack(model, inputs, labels, epsilon)
 
             # Combine clean and adversarial examples
@@ -344,7 +316,7 @@ def adversarial_training(
     return model, train_history, test_history
 
 num_epochs = 10
-epsilon = 16/255  # Maximum perturbation
+epsilon = 8/255  # Maximum perturbation
 # 0.0157	4/255  Smaller Perturbation. 
 #A good starting point for a "lighter" defense if the standard 8/255 causes
 # too much of a drop in accuracy on clean images
