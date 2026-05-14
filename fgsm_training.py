@@ -25,16 +25,6 @@ model = resnet18(pretrained=True)
 
 model.to(device)
 
-def get_train_loader(dataset, valid_size=1024, batch_size=32):
-    indices = list(range(len(dataset)))
-    train_sampler = torch.utils.data.SubsetRandomSampler(indices[valid_size:])
-    return torch.utils.data.DataLoader(dataset, sampler=train_sampler, batch_size=batch_size)
-
-def get_validation_loader(dataset, valid_size=1024, batch_size=32):
-    indices = list(range(len(dataset)))
-    valid_sampler = torch.utils.data.SubsetRandomSampler(indices[:valid_size])
-    return torch.utils.data.DataLoader(dataset, sampler=valid_sampler, batch_size=batch_size)
-
 cifar10_mean = (0.4914, 0.4822, 0.4465)
 cifar10_std = (0.2023, 0.1994, 0.2010)
 std = torch.Tensor(cifar10_std).view(1,3,1,1).to(device)
